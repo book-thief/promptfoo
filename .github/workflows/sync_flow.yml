@@ -5,6 +5,9 @@ on:
     - cron: '0 */6 * * *'
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   sync:
     runs-on: ubuntu-latest
@@ -23,12 +26,17 @@ jobs:
       - name: Sync Fork without workflow file changes
         run: |
           git remote add upstream https://github.com/promptfoo/promptfoo.git || true
-          git fetch upstream
+          git fetch origin main
+          git fetch upstream main
+
           git checkout main
           git merge upstream/main --no-edit
 
-          # Remove any merged changes under .github/workflows
-          git restore --source=HEAD --staged --worktree .github/workflows || true
+          # Keep our fork's existing workflow files
+          git restore --source=origin/main --staged --worktree .github/workflows || true
 
-          # Push only non-workflow changes
-          git push origin HEAD:main
+          # Commit only if restoring workflows changed the merge result
+          git add .github/workflows
+          git diff --cached --quiet || git commit --amend --no-edit
+
+          git push origin main
